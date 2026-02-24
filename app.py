@@ -1,23 +1,20 @@
 import streamlit as st
 import random
 
-# 1. GOOGLE AXTARIŞI VƏ PLAY STORE ÜÇÜN BAŞLIQ
-st.set_page_config(
-    page_title="Huseyn Elpasayevin Texmin Et Oyunu - Rəsmi", 
-    page_icon="🚀", 
-    layout="wide"
-)
+# 1. SƏHİFƏ AYARLARI
+st.set_page_config(page_title="Huseyn Elpasayev Games", page_icon="🚀", layout="wide")
 
-# 2. ƏTRAFDAN ŞARLAR VƏ SƏS (JavaScript)
+# 2. ŞARLAR VƏ SƏS EFFEKTİ
 def qelebe_effekti():
     st.components.v1.html(
         """
         <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
         <script>
-            var end = Date.now() + (3 * 1000);
+            var duration = 3 * 1000;
+            var end = Date.now() + duration;
             (function frame() {
-              confetti({ particleCount: 10, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#00ff00', '#ff0000', '#0000ff'] });
-              confetti({ particleCount: 10, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ffff00', '#ff00ff', '#00ffff'] });
+              confetti({ particleCount: 10, angle: 60, spread: 55, origin: { x: 0 } });
+              confetti({ particleCount: 10, angle: 120, spread: 55, origin: { x: 1 } });
               if (Date.now() < end) { requestAnimationFrame(frame); }
             }());
             var audio = new Audio('https://www.myinstants.com/media/sounds/tada.mp3');
@@ -26,101 +23,74 @@ def qelebe_effekti():
         """, height=0,
     )
 
-# 3. YADDAŞ SİSTEMİ (Session State)
-if 'balonlar' not in st.session_state: st.session_state.balonlar = 0
-if 'istifadeci_adi' not in st.session_state: st.session_state.istifadeci_adi = ""
-if 'oyun_modu' not in st.session_state: st.session_state.oyun_modu = "Reqem"
-if 'qazandi' not in st.session_state: st.session_state.qazandi = False
-if 'dostlar' not in st.session_state: st.session_state.dostlar = ["Huseyn Elpasayev"]
+# 3. YADDAŞI TƏMİZLƏYƏK VƏ QURAQ
+if 'istifadeci_adi' not in st.session_state:
+    st.session_state.istifadeci_adi = ""
+if 'balonlar' not in st.session_state:
+    st.session_state.balonlar = 0
+if 'qazandi' not in st.session_state:
+    st.session_state.qazandi = False
 
-# --- SİDEBAR (Yapımcı Paneli) ---
-st.sidebar.markdown("# 🛠️ YAPIMCI")
-st.sidebar.info("### ✨ **Huseyn Elpasayev**")
-st.sidebar.write("Bu oyun rəsmi olaraq Huseyn Elpasayev tərəfindən idarə olunur.")
-st.sidebar.divider()
-if st.session_state.istifadeci_adi:
-    st.sidebar.metric("🎈 Mövcud Balonların", st.session_state.balonlar)
-    if st.sidebar.button("Hesabı Sıfırla"):
-        st.session_state.clear()
-        st.rerun()
+# --- GİRİŞ EKRANI (AD YARATMAQ HİSSƏSİ) ---
+# Əgər ad yoxdursa, ancaq bu hissə görünəcək
+if st.session_state.istifadeci_adi == "":
+    st.title("🌟 Huseyn Elpasayevin Oyun Dünyası")
+    st.subheader("Xoş gəldin! Oyuna başlamaq üçün profil yarat.")
+    
+    yeni_ad = st.text_input("Adını yaz:", placeholder="Məsələn: Huseyn777")
+    
+    if st.button("Dünyaya Giriş Et 🚀"):
+        if yeni_ad.strip() != "":
+            st.session_state.istifadeci_adi = yeni_ad
+            st.success(f"Profil yaradıldı! Xoş gəldin, {yeni_ad}!")
+            st.rerun() # Səhifəni yeniləyir və oyunu açır
+        else:
+            st.error("Zəhmət olmasa bir ad daxil et!")
+    
+    # Giriş ekranında yapımcı qeydi
+    st.info("Redaktor & Yapımcı: Huseyn Elpasayev")
+    st.stop() # Kodun qalan hissəsinin işləməsini dayandırır
 
-# --- GİRİŞ EKRANI ---
-if not st.session_state.istifadeci_adi:
-    st.title("🌟 Huseyn Elpasayevin Texmin Et Dünyası")
-    st.markdown("#### 📥 Google Play: 4.9⭐ | 1M+ Yükləmə (Simulyasiya)")
-    ad = st.text_input("Oyunçu Adını Daxil Et:")
-    if st.button("Dünyaya Giriş Et"):
-        if ad:
-            st.session_state.istifadeci_adi = ad
-            st.rerun()
-    st.stop()
+# --- OYUN AÇILDIQDAN SONRA GÖRÜNƏN HİSSƏ ---
+st.sidebar.title(f"👤 {st.session_state.istifadeci_adi}")
+st.sidebar.metric("🎈 Balonların", st.session_state.balonlar)
+st.sidebar.markdown("---")
+st.sidebar.write("🛠️ **Yapımcı: Huseyn Elpasayev**")
 
-# --- ƏSAS MENYU (TABLAR) ---
-tab1, tab2, tab3 = st.tabs(["🎮 Oyunlar", "👥 Sosial & Chat", "🏆 Reytinq"])
+if st.sidebar.button("Hesabdan Çıx"):
+    st.session_state.istifadeci_adi = ""
+    st.rerun()
 
-# --- TAB 1: OYUNLAR ---
+# Əsas Oyun Sahəsi
+st.title(f"🎮 Huseyn Elpasayev Games")
+tab1, tab2 = st.tabs(["🎯 Rəqəmi Tap", "💬 Chat"])
+
 with tab1:
+    if 'gizli' not in st.session_state:
+        st.session_state.gizli = random.randint(1, 100)
+    
     c1, c2 = st.columns([10, 1])
-    c1.title(f"Hazırkı Oyun: {st.session_state.oyun_modu}")
-    
-    # Mavi Pult (Gizli Cheat)
-    if c2.button("🎮", help="Huseyn Mode: ON"):
+    if c2.button("🎮"): # Mavi pult gizli düymə
         st.session_state.qazandi = True
-        st.toast("🤫 Yapımcı hiyləsi aktivdir!")
-
-    if st.session_state.oyun_modu == "Reqem":
-        if 'gizli' not in st.session_state: st.session_state.gizli = random.randint(1, 100)
-        
-        if not st.session_state.qazandi:
-            texmin = st.number_input("1-100 arası rəqəmi tap:", 1, 100)
-            if st.button("Yoxla"):
-                if texmin == st.session_state.gizli:
-                    st.session_state.qazandi = True
-                    st.rerun()
-                elif texmin < st.session_state.gizli: st.warning("⬆️ Daha BÖYÜK!")
-                else: st.warning("⬇️ Daha KİÇİK!")
     
-    elif st.session_state.oyun_modu == "Silah":
-        st.write("🎯 **Hədəfi vur və balon qazan!**")
-        target = random.choice(["👾", "🦖", "🛸", "🤖"])
-        st.title(f"Hədəf: {target}")
-        if st.button("🔥 ATEŞ ET!"):
-            st.session_state.qazandi = True
-            st.rerun()
-
-    # QALİBİYYƏT
-    if st.session_state.qazandi:
-        st.success(f"🎊 TƏBRİKLƏR! {st.session_state.istifadeci_adi}, sən qazandın!")
-        q_balon = random.randint(15, 35)
-        st.session_state.balonlar += q_balon
+    if not st.session_state.qazandi:
+        texmin = st.number_input("1-100 arası rəqəm seç:", 1, 100)
+        if st.button("Yoxla"):
+            if texmin == st.session_state.gizli:
+                st.session_state.qazandi = True
+                st.rerun()
+            elif texmin < st.session_state.gizli: st.warning("⬆️ DAHA BÖYÜK!")
+            else: st.warning("⬇️ DAHA KİÇİK!")
+    else:
+        st.success(f"🎊 Möhtəşəm qələbə, {st.session_state.istifadeci_adi}!")
         qelebe_effekti()
-        
-        if st.button("Növbəti Oyun (Random)"):
-            st.session_state.oyun_modu = random.choice(["Reqem", "Silah"])
-            if 'gizli' in st.session_state: del st.session_state.gizli
+        if st.button("Yenidən Başla"):
+            del st.session_state.gizli
             st.session_state.qazandi = False
+            st.session_state.balonlar += 10
             st.rerun()
 
-# --- TAB 2: SOSİAL ---
 with tab2:
-    st.subheader("💬 Şəxsi Chat")
-    dost = st.selectbox("Dost siyahın:", st.session_state.dostlar)
-    mesaj = st.text_input(f"{dost} üçün mesaj yaz:")
-    if st.button("Göndər"):
-        st.toast("✅ Mesaj göndərildi!")
-    st.info("Dostlarınla söhbət etmək üçün onları oyuna dəvət et!")
-
-# --- TAB 3: REYTİNQ (Google Play Stilində) ---
-with tab3:
-    st.subheader("⭐ Rəsmi Rəylər")
-    st.write("---")
-    st.write("**⭐⭐⭐⭐⭐ - Ali M.**")
-    st.write("> 'Huseyn Elpasayevin hazırladığı ən yaxşı oyundur, çox əyləncəlidir!'")
-    st.write("**⭐⭐⭐⭐⭐ - Ayxan.**")
-    st.write("> 'Şarların hər tərəfdən çıxması möhtəşəmdir!'")
-    st.divider()
-    st.write("Oyun Reytinqi: **4.9 / 5.0** 🚀")
-
-# ALT HİSSƏ
-st.write("---")
-st.caption("© 2026 Huseyn Elpasayev Games - Bütün hüquqlar qorunur.")
+    st.write("Dostlarınla söhbət etmək üçün onları linklə oyuna dəvət et!")
+    st.text_input("Mesaj yaz:")
+    st.button("Göndər")
