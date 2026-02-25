@@ -1,21 +1,50 @@
 import streamlit as st
 import random
 
-# 1. SƏHİFƏ VƏ 3D DİZAYN AYARLARI
-st.set_page_config(page_title="Huseyn Elpasayev Ultimate World", page_icon="🌐", layout="wide")
+# 1. SƏHİFƏ VƏ NEON CSS AYARLARI
+st.set_page_config(page_title="Huseyn Elpasayev Neon World", page_icon="🌐", layout="wide")
 
 st.markdown("""
     <style>
+    /* Arxa fon */
     .stApp {
-        background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
         color: white;
     }
-    .main-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid #00d2ff;
-        padding: 20px;
-        border-radius: 15px;
-        box-shadow: 0 0 15px #00d2ff;
+    
+    /* BÜTÜN DÜYMƏLƏR ÜÇÜN RƏNG (AĞ OLMASIN DEYƏ) */
+    div.stButton > button {
+        background: linear-gradient(45deg, #005f73, #0a9396) !important;
+        color: #ffffff !important;
+        border: 2px solid #94d2bd !important;
+        border-radius: 12px !important;
+        font-weight: bold !important;
+        box-shadow: 0 0 10px rgba(10, 147, 150, 0.5) !important;
+        transition: all 0.3s ease !important;
+    }
+
+    /* Pult Düyməsi (Xüsusi Stil - Sağda və Parlayan) */
+    .pult-button {
+        position: fixed;
+        top: 60px;
+        right: 20px;
+        z-index: 999;
+    }
+
+    /* Düymə üzərinə gələndə */
+    div.stButton > button:hover {
+        background: linear-gradient(45deg, #ee9b00, #ca6702) !important;
+        box-shadow: 0 0 20px #e9d8a6 !important;
+        transform: scale(1.05);
+    }
+
+    /* Oyun Qutusu */
+    .game-card {
+        background: rgba(0, 0, 0, 0.6);
+        border: 2px solid #00d2ff;
+        padding: 25px;
+        border-radius: 20px;
+        box-shadow: 0 0 30px rgba(0, 210, 255, 0.3);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -26,7 +55,7 @@ def qelebe_effekti():
         <script>
             var audio = new Audio('https://www.myinstants.com/media/sounds/tada.mp3');
             audio.play();
-            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+            confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
         </script>""", height=0)
 
 # 2. YADDAŞ (SESSION STATE)
@@ -34,13 +63,12 @@ if 'balonlar' not in st.session_state: st.session_state.balonlar = 100
 if 'istifadeci_adi' not in st.session_state: st.session_state.istifadeci_adi = ""
 if 'karakter' not in st.session_state: st.session_state.karakter = "Standart"
 if 'qazandi' not in st.session_state: st.session_state.qazandi = False
-if 'dostlar' not in st.session_state: st.session_state.dostlar = ["Huseyn Elpasayev"]
 
 # --- GİRİŞ EKRANI ---
 if not st.session_state.istifadeci_adi:
-    st.title("🚀 Huseyn Elpasayev Games-ə Giriş")
-    ad = st.text_input("Profil adını yarat:")
-    if st.button("Dünyaya Daxil Ol"):
+    st.title("🌐 Huseyn Elpasayev Neon World")
+    ad = st.text_input("Profil Adın:", placeholder="Adını bura yaz...")
+    if st.button("Dünyaya Daxil Ol 🚀"):
         if ad:
             st.session_state.istifadeci_adi = ad
             st.rerun()
@@ -50,78 +78,50 @@ if not st.session_state.istifadeci_adi:
 st.sidebar.title(f"👤 {st.session_state.istifadeci_adi}")
 st.sidebar.metric("💰 Balon Pulun", st.session_state.balonlar)
 st.sidebar.info(f"🎭 Karakter: {st.session_state.karakter}")
-st.sidebar.write("---")
 st.sidebar.write("🛠️ Yapımcı: **Huseyn Elpasayev**")
 
-# --- ƏSAS TABLAR (HAMISI BURADADIR) ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 3D Oyun", "🛒 Mağaza", "🤝 Dostluq", "💬 Chat", "⭐ Reytinq"])
+# --- PULT (GİZLİ DÜYMƏ) ---
+# Sağ yuxarıda həmişə görünməsi üçün
+with st.container():
+    st.markdown('<div class="pult-button">', unsafe_allow_html=True)
+    if st.button("🎮 PULT"):
+        st.session_state.qazandi = True
+        st.toast("Hiylə aktiv edildi! 😉")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- TAB 1: 3D OYUN ---
+# --- TABLAR ---
+tab1, tab2, tab3, tab4 = st.tabs(["🎯 3D Oyun", "🛒 Mağaza", "💬 Chat", "⭐ Reytinq"])
+
 with tab1:
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.subheader("🔭 3D Məkanda Rəqəmi Tap!")
-    st.write("Diqqət: Hər səhv təxmin 5-15 balon aparır!")
-    
+    st.markdown('<div class="game-card">', unsafe_allow_html=True)
     if 'gizli' not in st.session_state: st.session_state.gizli = random.randint(1, 100)
 
-    # Karakter Köməyi
-    if st.session_state.karakter == "Dəqiqlik Ustası":
-        tip = "Cüt" if st.session_state.gizli % 2 == 0 else "Tək"
-        st.info(f"🎯 Usta deyir: Rəqəm {tip} rəqəmdir!")
-
-    texmin = st.number_input("Rəqəmi təxmin et (1-100):", 1, 100, key="game_in")
-    if st.button("Təxmini Göndər"):
-        if texmin == st.session_state.gizli:
-            st.session_state.qazandi = True
-            st.rerun()
-        else:
-            cixilan = random.randint(5, 15)
-            st.session_state.balonlar -= cixilan
-            st.error(f"❌ Səhvdir! -{cixilan} 💰")
-            if texmin < st.session_state.gizli: st.write("🔭 Daha YUXARI bax!")
-            else: st.write("🔭 Daha AŞAĞI bax!")
+    if not st.session_state.qazandi:
+        texmin = st.number_input("Rəqəmi tap (1-100):", 1, 100)
+        if st.button("Təxmin Et"):
+            if texmin == st.session_state.gizli:
+                st.session_state.qazandi = True
+                st.rerun()
+            else:
+                cixilan = random.randint(5, 15)
+                st.session_state.balonlar -= cixilan
+                if texmin < st.session_state.gizli: st.warning("🔭 Daha YUXARI!")
+                else: st.warning("🔭 Daha AŞAĞI!")
     
     if st.session_state.qazandi:
         qelebe_effekti()
-        hediyye = 50 if st.session_state.karakter == "Kral Qalib" else 25
-        st.success(f"🎊 Qələbə! +{hediyye} balon!")
-        if st.button("Yeni Raund"):
-            st.session_state.balonlar += hediyye
+        st.success("🎊 Möhtəşəm! Qalib gəldin!")
+        if st.button("Yeni Raund 🔄"):
+            st.session_state.balonlar += 30
             del st.session_state.gizli
             st.session_state.qazandi = False
             st.rerun()
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- TAB 2: MAĞAZA ---
 with tab2:
-    st.subheader("🛒 Karakter Mağazası")
-    karakterler = {"Standart": 0, "Şanslı Hüseyn": 0, "İnadkar İbrahim": 30, "Dəqiqlik Ustası": 60, "Kral Qalib": 100}
-    for k, p in karakterler.items():
-        if st.button(f"Seç: {k} ({p} 💰)"):
-            if st.session_state.balonlar >= p:
-                st.session_state.karakter = k
-                st.toast(f"{k} seçildi!")
-            else: st.error("Balonun çatmır!")
-
-# --- TAB 3: DOSTLUQ ---
-with tab3:
-    st.subheader("🤝 Dostluq Sistemi")
-    yeni_dost = st.text_input("Dostluq atmaq üçün ad yaz:")
-    if st.button("İstək Göndər"):
-        st.toast(f"✅ {yeni_dost} istifadəçisinə istək yollandı!")
-
-# --- TAB 4: CHAT ---
-with tab4:
-    st.subheader("💬 Şəxsi Mesajlar")
-    secilen_dost = st.selectbox("Dost seç:", st.session_state.dostlar)
-    mesaj = st.text_input(f"{secilen_dost} üçün mesaj yaz:")
-    if st.button("Göndər"):
-        st.toast("Mesaj göndərildi! ✅")
-
-# --- TAB 5: REYTİNQ ---
-with tab5:
-    st.subheader("⭐ Reytinq və Rəylər")
-    st.write("1. Huseyn Elpasayev - 999,999 🎈")
-    st.write(f"2. {st.session_state.istifadeci_adi} - {st.session_state.balonlar} 🎈")
-    st.divider()
-    st.write("Google Play Reytinqi: 4.9/5.0 ⭐")
+    st.subheader("🛒 Mağaza")
+    if st.button("Dəqiqlik Ustası (60 💰)"):
+        if st.session_state.balonlar >= 60:
+            st.session_state.karakter = "Dəqiqlik Ustası"
+            st.session_state.balonlar -= 60
+            st.rerun()
