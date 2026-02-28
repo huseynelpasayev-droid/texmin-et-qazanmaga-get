@@ -102,4 +102,39 @@ with tab1:
 
 # --- TAB 2: GEYİM VƏ RƏNG ---
 with tab2:
-    st.
+    st.subheader("👕 Pişik Mağazası")
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        st.session_state.reng = st.radio("Pişiyin rəngini seç:", ["Boz", "Ağ", "Narıncı", "Qara"])
+        st.success(f"Yeni rəng: {st.session_state.reng}")
+
+    with c2:
+        st.session_state.paltar = st.selectbox("Paltar/Aksesuar geyindir:", ["Yoxdur", "Qırmızı Jilet", "Mavi Papaq", "Gün Eynəyi", "Supermen Kostyumu"])
+        st.info(f"Hazırkı stil: {st.session_state.paltar}")
+
+# --- TAB 3: GÖREVLƏR ---
+with tab3:
+    st.subheader("🎯 Günlük Tapşırıqlar")
+    st.checkbox("Şəhərdə 50 metr dırmaş (XP: 50)")
+    st.checkbox("Səhra parkurunu tamamla (XP: 100)")
+    st.checkbox("10 dəfə topla oyna (XP: 30)")
+    
+    if st.button("🎁 Mükafatları Al"):
+        st.balloons()
+        st.session_state.xp += 30
+
+# --- TAB 4: REYTİNQ ---
+with tab4:
+    st.subheader("⭐ Liderlər Cədvəli")
+    st.write(f"1. **Huseyn Elpasayev** - Level 999")
+    st.write(f"2. **{st.session_state.reng} Pişik** - Level {st.session_state.lvl}")
+
+# 5. SEVİYYƏ ATLAMA MEXANİKASI
+if st.session_state.xp >= 100:
+    st.session_state.lvl += 1
+    st.session_state.xp = 0
+    st.session_state.caynaq_gucu += 15 # Səviyyə artdıqca daha yuxarı dırmaşır
+    st.snow()
+    st.sidebar.success(f"🎉 Təbriklər! Level {st.session_state.lvl} oldun!")
+    st.sidebar.info("🚀 Caynaqların gücləndi, artıq daha hündürə çıxa bilərsən!")
