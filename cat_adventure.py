@@ -1,118 +1,156 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="Huseyn's Super Cat 3D", layout="wide")
+st.set_page_config(page_title="HuseynCraft 3D", layout="wide")
 
-# OYUNUN ƏSAS KODU
-game_code = """
+minecraft_code = """
 <!DOCTYPE html>
 <html>
 <head>
     <style>
         body { margin: 0; overflow: hidden; font-family: sans-serif; }
-        #blocker { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; color: white; cursor: pointer; text-align: center; }
+        #overlay { position: absolute; bottom: 20px; left: 20px; color: white; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px; pointer-events: none; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="blocker"><div><h1>OYUNA BAŞLA</h1><p>W,A,S,D - Hərəkət | SPACE - Hopbanmaq<br>(Siçanı aktiv etmək üçün bura basın)</p></div></div>
+    <div id="crosshair"></div>
+    <div id="overlay">
+        <h2>⛏️ HuseynCraft v1.0</h2>
+        <b>W,A,S,D:</b> Gəzmək | <b>SPACE:</b> Tullanmaq<br>
+        <b>SOL KLİK:</b> Blok Qoymaq | <b>SAĞ KLİK:</b> Blok Silmək<br>
+        <b>Siçan:</b> Ətrafa baxmaq (Kilidləmək üçün ekrana bas)
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        let scene, camera, renderer, player, clock, yaw = 0;
-        let moveF = false, moveB = false, moveL = false, moveR = false, canJ = false, velY = 0;
+        let scene, camera, renderer, clock, velocity, direction, moveForward, moveBackward, moveLeft, moveRight, canJump;
+        let objects = []; // Blokları saxlamaq üçün
 
         init();
         animate();
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87CEEB);
+            scene.background = new THREE.Color(0x87CEEB); // Göy üzü
+            scene.fog = new THREE.Fog(0x87CEEB, 0, 100);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             clock = new THREE.Clock();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
-            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+            const light = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(light);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
 
-            // YER (KƏND)
-            const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshPhongMaterial({color: 0x228B22}));
-            ground.rotation.x = -Math.PI/2;
-            scene.add(ground);
+            // Torpaq (Göy qat)
+            const floorGeo = new THREE.PlaneGeometry(200, 200, 20, 20);
+            const floorMat = new THREE.MeshPhongMaterial({ color: 0x228B22 });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+            objects.push(floor);
 
-            // SƏHRA VƏ PİRAMİDALAR
-            const sandMat = new THREE.MeshPhongMaterial({color: 0xEDC9AF});
-            for(let i=0; i<5; i++) {
-                const pyr = new THREE.Mesh(new THREE.ConeGeometry(15 + i*5, 25, 4), sandMat);
-                pyr.position.set(50 + i*20, 12.5, -50 - i*30);
-                scene.add(pyr);
-            }
+            // İdarəetmə Fizikası
+            velocity = new THREE.Vector3();
+            direction = new THREE.Vector3();
 
-            // --- PİŞİK (AYAĞÜSTƏ MODEL) ---
-            player = new THREE.Group();
-            
-            // Bədən (Dik duran bel və qarın)
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, 1.2), new THREE.MeshPhongMaterial({color: 0xFFA500}));
-            body.position.y = 1.1;
-            player.add(body);
+            // SİÇAN KİLİDİ
+            document.body.addEventListener('click', () => {
+                document.body.requestPointerLock();
+            });
 
-            // Baş
-            const head = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), body.material);
-            head.position.y = 2.8;
-            player.add(head);
-
-            // Əllər və Ayaqlar (Detallar)
-            const limbGeo = new THREE.BoxGeometry(0.4, 1.2, 0.4);
-            function addLimb(x, y, z) {
-                const limb = new THREE.Mesh(limbGeo, body.material);
-                limb.position.set(x, y, z);
-                player.add(limb);
-            }
-            addLimb(0.5, 0.6, 0); addLimb(-0.5, 0.6, 0); // Ayaqlar
-            addLimb(0.8, 2.2, 0); addLimb(-0.8, 2.2, 0); // Əllər
-
-            scene.add(player);
-
-            // İDARƏETMƏ
-            document.getElementById('blocker').addEventListener('click', () => document.body.requestPointerLock());
             document.addEventListener('mousemove', (e) => {
-                if(document.pointerLockElement === document.body) {
-                    yaw -= e.movementX * 0.003;
-                    player.rotation.y = yaw;
+                if (document.pointerLockElement === document.body) {
+                    camera.rotation.y -= e.movementX * 0.002;
+                    camera.rotation.x -= e.movementY * 0.002;
+                    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
                 }
             });
 
-            window.addEventListener('keydown', (e) => {
-                if(e.code === 'KeyW') moveF = true; if(e.code === 'KeyS') moveB = true;
-                if(e.code === 'KeyA') moveL = true; if(e.code === 'KeyD') moveR = true;
-                if(e.code === 'Space' && canJ) { velY = 15; canJ = false; }
-            });
-            window.addEventListener('keyup', (e) => {
-                if(e.code === 'KeyW') moveF = false; if(e.code === 'KeyS') moveB = false;
-                if(e.code === 'KeyA') moveL = false; if(e.code === 'KeyD') moveR = false;
+            // BLOK QOYMAQ (Minecraft Məntiqi)
+            window.addEventListener('mousedown', (e) => {
+                if (document.pointerLockElement !== document.body) return;
+
+                const raycaster = new THREE.Raycaster();
+                const center = new THREE.Vector2(0, 0); // Ekranın ortası
+                raycaster.setFromCamera(center, camera);
+                const intersects = raycaster.intersectObjects(objects);
+
+                if (intersects.length > 0) {
+                    const intersect = intersects[0];
+                    
+                    if (e.button === 0) { // SOL KLİK - BLOK QOY
+                        const voxel = new THREE.Mesh(
+                            new THREE.BoxGeometry(2, 2, 2),
+                            new THREE.MeshPhongMaterial({ color: Math.random() * 0xffffff })
+                        );
+                        voxel.position.copy(intersect.point).add(intersect.face.normal);
+                        voxel.position.divideScalar(2).floor().multiplyScalar(2).addScalar(1);
+                        scene.add(voxel);
+                        objects.push(voxel);
+                    } 
+                    else if (e.button === 2) { // SAĞ KLİK - BLOK SİL
+                        if (intersect.object !== floor) {
+                            scene.remove(intersect.object);
+                            objects.splice(objects.indexOf(intersect.object), 1);
+                        }
+                    }
+                }
             });
 
-            renderer = new THREE.WebGLRenderer({antialias: true});
+            // Sağ klik menyusunu bağla
+            window.addEventListener('contextmenu', e => e.preventDefault());
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
+
+            camera.position.y = 5;
+            
+            // Klaviatura
+            const onKeyDown = (e) => {
+                if(e.code === 'KeyW') moveForward = true;
+                if(e.code === 'KeyS') moveBackward = true;
+                if(e.code === 'KeyA') moveLeft = true;
+                if(e.code === 'KeyD') moveRight = true;
+                if(e.code === 'Space' && canJump) { velocity.y += 15; canJump = false; }
+            };
+            const onKeyUp = (e) => {
+                if(e.code === 'KeyW') moveForward = false;
+                if(e.code === 'KeyS') moveBackward = false;
+                if(e.code === 'KeyA') moveLeft = false;
+                if(e.code === 'KeyD') moveRight = false;
+            };
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
         }
 
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
 
-            const speed = 12;
-            if(moveF) player.translateZ(speed * delta);
-            if(moveB) player.translateZ(-speed * delta);
-            if(moveL) player.translateX(speed * delta);
-            if(moveR) player.translateX(-speed * delta);
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            velocity.y -= 9.8 * 4.0 * delta; 
 
-            velY -= 35 * delta; // Cazibə
-            player.position.y += velY * delta;
-            if(player.position.y <= 0) { player.position.y = 0; velY = 0; canJ = true; }
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
 
-            // KAMERA İZLƏMƏ
-            const camOffset = new THREE.Vector3(0, 8, -15).applyQuaternion(player.quaternion);
-            camera.position.copy(player.position).add(camOffset);
-            camera.lookAt(player.position.x, player.position.y + 3, player.position.z);
+            if (moveForward || moveBackward) velocity.z -= direction.z * 100.0 * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * 100.0 * delta;
+
+            camera.translateX(-velocity.x * delta);
+            camera.translateZ(-velocity.z * delta);
+            camera.position.y += (velocity.y * delta);
+
+            if (camera.position.y < 5) {
+                velocity.y = 0;
+                camera.position.y = 5;
+                canJump = true;
+            }
 
             renderer.render(scene, camera);
         }
@@ -121,4 +159,4 @@ game_code = """
 </html>
 """
 
-components.html(game_code, height=800)
+components.html(minecraft_code, height=800)
