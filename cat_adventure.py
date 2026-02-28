@@ -1,127 +1,168 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="HuseynCraft PRO 3D", layout="wide")
+st.set_page_config(page_title="HuseynCraft Survival Edition", layout="wide")
 
-# OYUNUN TAM KODU - DİQQƏTLƏ KOPYALA
-mc_ultimate_code = """
+mc_survival_code = """
 <!DOCTYPE html>
 <html>
 <head>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        #menu { position: absolute; width: 100%; height: 100%; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://wallpaperaccess.com/full/15105.jpg'); background-size: cover; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; color: white; }
-        .btn { background: #4CAF50; border: 4px solid #2e7d32; color: white; padding: 15px 30px; font-size: 24px; cursor: pointer; margin: 10px; font-weight: bold; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
-        #ui { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; pointer-events: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
+        #overlay { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; color: white; flex-direction: column; }
+        
+        /* Survival Barları */
+        #hud { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; z-index: 100; pointer-events: none; }
+        .stat-bar { width: 150px; height: 20px; border: 2px solid #fff; background: #000; position: relative; }
+        .fill { height: 100%; transition: width 0.3s; }
+        #hp-fill { background: red; width: 100%; }
+        #hunger-fill { background: orange; width: 100%; }
+        #thirst-fill { background: blue; width: 100%; }
+
+        /* Mağaza və Ayarlar Menyusu */
+        #shop-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; background: #333; border: 5px solid #000; padding: 20px; display: none; z-index: 2000; color: white; text-align: center; }
+        .shop-item { background: #555; margin: 10px; padding: 10px; cursor: pointer; border: 2px solid #eee; }
+        .shop-item:hover { background: #777; }
+        
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 15px; height: 15px; border: 2px solid white; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
     </style>
 </head>
 <body>
-    <div id="menu">
-        <h1>HUSEYN CRAFT: BIOMES & 3D</h1>
-        <button class="btn" onclick="startGame()">OYUNA BAŞLA</button>
-        <p>W,A,S,D: Hərəkət | SPACE: Tullanmaq | Siçan: Baxış</p>
+    <div id="overlay">
+        <h1>HUSEYNCRAFT SURVIVAL</h1>
+        <button onclick="startGame()" style="padding:15px 30px; font-size:20px; cursor:pointer;">DÜNYAYA GİR</button>
+        <div style="margin-top:20px;">
+            <h3>MAĞAZA (ANA MENYU)</h3>
+            <div class="shop-item" onclick="buyItem('speed')">Sürət Artırımı (10 Qızıl)</div>
+            <div class="shop-item" onclick="buyItem('skin')">Mavi Kostyum Değiş</div>
+        </div>
     </div>
+
+    <div id="shop-menu">
+        <h2>AYARLAR & MAĞAZA</h2>
+        <div class="shop-item" onclick="buyItem('speed')">Sürəti 2X Et</div>
+        <div class="shop-item" onclick="buyItem('heal')">Canı Yenilə</div>
+        <button onclick="toggleShop()" style="margin-top:20px;">Bağla</button>
+    </div>
+
+    <div id="hud">
+        <div>Can: <div class="stat-bar"><div id="hp-fill" class="fill"></div></div></div>
+        <div>Aclıq: <div class="stat-bar"><div id="hunger-fill" class="fill"></div></div></div>
+        <div>Su: <div class="stat-bar"><div id="thirst-fill" class="fill"></div></div></div>
+    </div>
+    
     <div id="crosshair"></div>
-    <div id="ui">Biom: Meşə / Dağlıq</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
         let scene, camera, renderer, player, clock;
-        let moveF = false, moveB = false, moveL = false, moveR = false, canJ = true, velY = 0;
-        let objects = [];
+        let moveF = false, moveB = false, moveL = false, moveR = false, velY = 0, canJ = true;
+        let objects = [], speedMult = 1;
+        let stats = { hp: 100, hunger: 100, thirst: 100 };
 
         function startGame() {
-            document.getElementById('menu').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
             document.body.requestPointerLock();
             init();
             animate();
+            startDegradation(); // Aclıq və susuzluq başlasın
         }
 
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87CEEB);
-            scene.fog = new THREE.Fog(0x87CEEB, 20, 100);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             clock = new THREE.Clock();
 
-            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
             scene.add(light);
 
-            // --- DAĞLIQ RELYEF ---
-            const geo = new THREE.PlaneGeometry(300, 300, 50, 50);
-            geo.rotateX(-Math.PI / 2);
-            const pos = geo.attributes.position.array;
-            for (let i = 0; i < pos.length; i += 3) {
-                let x = pos[i], z = pos[i+2];
-                pos[i+1] = Math.sin(x/8) * Math.cos(z/8) * 4; // Təpələr
-            }
-            geo.computeVertexNormals();
-            const ground = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({color: 0x4d8a31}));
+            // Relyefli Yer
+            const ground = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), new THREE.MeshPhongMaterial({color: 0x4d8a31}));
+            ground.rotation.x = -Math.PI/2;
             scene.add(ground);
             objects.push(ground);
 
-            // --- AĞACLAR ---
-            for(let i=0; i<30; i++) {
-                let tx = Math.random()*200-100;
-                let tz = Math.random()*200-100;
-                const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.8, 4, 0.8), new THREE.MeshPhongMaterial({color: 0x5d4037}));
-                trunk.position.set(tx, 2, tz);
-                const leaves = new THREE.Mesh(new THREE.BoxGeometry(3, 3, 3), new THREE.MeshPhongMaterial({color: 0x2e7d32}));
-                leaves.position.set(tx, 5, tz);
-                scene.add(trunk, leaves);
-            }
-
-            // --- 3D OYUNÇU MODELİ ---
+            // 3D Player (Gözləri və Üzü olan)
             player = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 0.6), new THREE.MeshPhongMaterial({color: 0x0066ff}));
-            body.position.y = 0.9;
-            player.add(body);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.6), new THREE.MeshPhongMaterial({color: 0x0000ff}));
             const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshPhongMaterial({color: 0xffdbac}));
-            head.position.y = 2.2;
-            player.add(head);
+            head.position.y = 1.4;
+            const eye = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshPhongMaterial({color: 0x000}));
+            eye.position.set(0.2, 1.5, 0.4);
+            player.add(body, head, eye);
             scene.add(player);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({antialias: true});
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
+            document.addEventListener('keydown', (e) => {
+                if(e.code === 'KeyW') moveF = true;
+                if(e.code === 'KeyS') moveB = true;
+                if(e.code === 'Space' && canJ) { velY = 15; canJ = false; }
+                if(e.key === '`') toggleShop();
+            });
+            document.addEventListener('keyup', (e) => {
+                if(e.code === 'KeyW') moveF = false;
+                if(e.code === 'KeyS') moveB = false;
+            });
+            
             document.addEventListener('mousemove', (e) => {
-                if (document.pointerLockElement === document.body) {
-                    player.rotation.y -= e.movementX * 0.002;
+                if(document.pointerLockElement === document.body) {
+                    player.rotation.y -= e.movementX * 0.003;
                 }
             });
+        }
 
-            window.addEventListener('keydown', (e) => {
-                if(e.code === 'KeyW') moveF = true; if(e.code === 'KeyS') moveB = true;
-                if(e.code === 'KeyA') moveL = true; if(e.code === 'KeyD') moveR = true;
-                if(e.code === 'Space' && canJ) { velY = 12; canJ = false; }
-            });
-            window.addEventListener('keyup', (e) => {
-                if(e.code === 'KeyW') moveF = false; if(e.code === 'KeyS') moveB = false;
-                if(e.code === 'KeyA') moveL = false; if(e.code === 'KeyD') moveR = false;
-            });
+        function toggleShop() {
+            const menu = document.getElementById('shop-menu');
+            if(menu.style.display === 'block') {
+                menu.style.display = 'none';
+                document.body.requestPointerLock();
+            } else {
+                menu.style.display = 'block';
+                document.exitPointerLock();
+            }
+        }
+
+        function buyItem(type) {
+            if(type === 'speed') speedMult = 2;
+            if(type === 'heal') stats.hp = 100;
+            alert(type + " alındı!");
+        }
+
+        function startDegradation() {
+            setInterval(() => {
+                stats.hunger -= 1;
+                stats.thirst -= 2;
+                if(stats.hunger <= 0 || stats.thirst <= 0) stats.hp -= 5;
+                updateHUD();
+            }, 3000);
+        }
+
+        function updateHUD() {
+            document.getElementById('hp-fill').style.width = stats.hp + "%";
+            document.getElementById('hunger-fill').style.width = stats.hunger + "%";
+            document.getElementById('thirst-fill').style.width = stats.thirst + "%";
+            if(stats.hp <= 0) alert("ÖLDÜNÜZ!");
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();
+            let delta = clock.getDelta();
+            let moveSpeed = 15 * speedMult;
 
-            const speed = 10;
-            if(moveF) player.translateZ(speed * delta);
-            if(moveB) player.translateZ(-speed * delta);
-            if(moveL) player.translateX(speed * delta);
-            if(moveR) player.translateX(-speed * delta);
+            if(moveF) player.translateZ(moveSpeed * delta);
+            if(moveB) player.translateZ(-moveSpeed * delta);
 
-            velY -= 30 * delta;
+            velY -= 35 * delta;
             player.position.y += velY * delta;
             if(player.position.y < 0) { player.position.y = 0; velY = 0; canJ = true; }
 
-            // Üçüncü Şəxs Kamerası (TPS)
-            const camOffset = new THREE.Vector3(0, 5, -8).applyQuaternion(player.quaternion);
-            camera.position.copy(player.position).add(camOffset);
-            camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z);
+            const camPos = new THREE.Vector3(0, 5, -10).applyQuaternion(player.quaternion);
+            camera.position.copy(player.position).add(camPos);
+            camera.lookAt(player.position.x, player.position.y + 2, player.position.z);
 
             renderer.render(scene, camera);
         }
@@ -130,4 +171,4 @@ mc_ultimate_code = """
 </html>
 """
 
-components.html(mc_ultimate_code, height=800)
+components.html(mc_survival_code, height=800)
