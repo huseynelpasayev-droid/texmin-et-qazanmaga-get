@@ -1,145 +1,128 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="HuseynCraft - The Final Version", layout="wide")
+st.set_page_config(page_title="HuseynCraft 3D - Biomes & Trees", layout="wide")
 
-# ƏSL MINECRAFT MƏNTİQLİ WEB KODU
-mc_final_code = """
+# OYUNUN MASTER KODU
+mc_extreme_code = """
 <!DOCTYPE html>
 <html>
 <head>
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 15px; height: 15px; border: 2px solid white; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
-        #mining-bar { position: absolute; bottom: 30%; left: 50%; transform: translateX(-50%); width: 150px; height: 8px; background: rgba(0,0,0,0.5); display: none; border: 1px solid white; }
-        #mining-fill { width: 0%; height: 100%; background: #ffcc00; }
-        #info { position: absolute; top: 20px; left: 20px; color: white; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; pointer-events: none; }
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
+        #menu { position: absolute; width: 100%; height: 100%; background: url('https://wallpaperaccess.com/full/15105.jpg'); background-size: cover; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; color: white; text-shadow: 4px 4px #000; }
+        .btn { background: #5a5a5a; border: 4px solid #000; color: white; padding: 20px 40px; font-size: 30px; cursor: pointer; margin: 10px; }
+        .btn:hover { background: #828282; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 2px; background: white; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
+        #crosshair::after { content: ''; position: absolute; top: 50%; left: 50%; width: 2px; height: 20px; background: white; transform: translate(-50%, -50%); }
     </style>
 </head>
 <body>
-    <div id="crosshair"></div>
-    <div id="mining-bar"><div id="mining-fill"></div></div>
-    <div id="info">
-        <b>⛏️ HuseynCraft v3.0</b><br>
-        - SAĞ KLİK: Blok Qoy (Yerləşdir)<br>
-        - SOL KLİK: BASIB SAXLA (Sındır)<br>
-        - W,A,S,D: Hərəkət | SPACE: Tullan
+    <div id="menu">
+        <h1>HUSEYN CRAFT PRO</h1>
+        <button class="btn" onclick="startGame()">DÜNYAYA GİR</button>
+        <p>W,A,S,D - Hərəkət | SPACE - Tullan | SOL KLİK - Sındır | SAĞ KLİK - Qoy</p>
     </div>
+    <div id="crosshair"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        let scene, camera, renderer, clock, objects = [];
+        let scene, camera, renderer, player, clock;
         let moveF = false, moveB = false, moveL = false, moveR = false, canJ = true, velY = 0;
-        let isMining = false, mineTime = 0, currentTarget = null;
+        let objects = [];
 
-        init();
-        animate();
+        function startGame() {
+            document.getElementById('menu').style.display = 'none';
+            document.body.requestPointerLock();
+            init();
+            animate();
+        }
 
         function init() {
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87CEEB);
+            scene.fog = new THREE.Fog(0x87CEEB, 20, 150);
+
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             clock = new THREE.Clock();
 
-            scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+            scene.add(light);
 
-            // OT TORPAQ
-            const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshPhongMaterial({color: 0x3d6e1d}));
-            ground.rotation.x = -Math.PI / 2;
+            // --- 3D RELYEF (DAĞLAR VƏ TƏPƏLƏR) ---
+            const geometry = new THREE.PlaneGeometry(400, 400, 60, 60);
+            geometry.rotateX(-Math.PI / 2);
+            
+            const vertices = geometry.attributes.position.array;
+            for (let i = 0; i < vertices.length; i += 3) {
+                // Riyazi dalğalarla dağlar yaradılır
+                let x = vertices[i];
+                let z = vertices[i + 2];
+                vertices[i + 1] = Math.sin(x / 10) * Math.cos(z / 10) * 5 + Math.sin(x / 5) * 2;
+            }
+            geometry.computeVertexNormals();
+            
+            const ground = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({color: 0x3d6e1d}));
             scene.add(ground);
             objects.push(ground);
+
+            // --- AĞACLAR ƏLAVƏ EDİLMƏSİ ---
+            for(let i=0; i<40; i++) {
+                createTree(Math.random()*300-150, Math.random()*300-150);
+            }
+
+            // --- 3D PLAYER MODELİ ---
+            player = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 0.5), new THREE.MeshPhongMaterial({color: 0x0000ff}));
+            body.position.y = 1;
+            player.add(body);
+            scene.add(player);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // SİÇAN KİLİDİ
-            document.body.onclick = () => document.body.requestPointerLock();
+            // İDARƏETMƏ
             document.addEventListener('mousemove', (e) => {
                 if (document.pointerLockElement === document.body) {
-                    camera.rotation.y -= e.movementX * 0.002;
-                    camera.rotation.x -= e.movementY * 0.002;
-                    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+                    player.rotation.y -= e.movementX * 0.002;
                 }
             });
 
-            document.addEventListener('mousedown', onMouseDown);
-            document.addEventListener('mouseup', onMouseUp);
-            document.addEventListener('contextmenu', e => e.preventDefault());
-
-            camera.position.y = 5;
+            window.addEventListener('keydown', (e) => {
+                if(e.code === 'KeyW') moveF = true; if(e.code === 'KeyS') moveB = true;
+                if(e.code === 'KeyA') moveL = true; if(e.code === 'KeyD') moveR = true;
+                if(e.code === 'Space' && canJ) { velY = 15; canJ = false; }
+            });
+            window.addEventListener('keyup', (e) => {
+                if(e.code === 'KeyW') moveF = false; if(e.code === 'KeyS') moveB = false;
+                if(e.code === 'KeyA') moveL = false; if(e.code === 'KeyD') moveR = false;
+            });
         }
 
-        function onMouseDown(e) {
-            if (document.pointerLockElement !== document.body) return;
-            const ray = new THREE.Raycaster();
-            ray.setFromCamera(new THREE.Vector2(0,0), camera);
-            const intersects = ray.intersectObjects(objects);
-            if (intersects.length === 0) return;
-            const intersect = intersects[0];
-
-            if (e.button === 2) { // SAĞ KLİK - QOYMAQ
-                const block = new THREE.Mesh(
-                    new THREE.BoxGeometry(4, 4, 4), 
-                    new THREE.MeshPhongMaterial({color: 0x8b5a2b, flatShading: true})
-                );
-                block.position.copy(intersect.point).add(intersect.face.normal);
-                block.position.divideScalar(4).floor().multiplyScalar(4).addScalar(2);
-                scene.add(block);
-                objects.push(block);
-            } 
-            else if (e.button === 0) { // SOL KLİK - SINDIRMAQ (BAŞLA)
-                if (intersect.object.geometry.type !== "PlaneGeometry") {
-                    isMining = true;
-                    currentTarget = intersect.object;
-                    document.getElementById('mining-bar').style.display = 'block';
-                }
-            }
-        }
-
-        function onMouseUp() {
-            isMining = false;
-            mineTime = 0;
-            document.getElementById('mining-bar').style.display = 'none';
+        function createTree(x, z) {
+            const trunk = new THREE.Mesh(new THREE.BoxGeometry(1, 5, 1), new THREE.MeshPhongMaterial({color: 0x5d4037}));
+            trunk.position.set(x, 2.5, z);
+            const leaves = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), new THREE.MeshPhongMaterial({color: 0x2e7d32}));
+            leaves.position.set(x, 6, z);
+            scene.add(trunk);
+            scene.add(leaves);
+            objects.push(trunk, leaves);
         }
 
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
 
-            // SINDIRMA MEXANİKASI (EYNİ MINECRAFT)
-            if (isMining) {
-                mineTime += delta * 40; // Bu sındırma sürətidir
-                document.getElementById('mining-fill').style.width = mineTime + '%';
-                if (mineTime >= 100) {
-                    scene.remove(currentTarget);
-                    objects = objects.filter(o => o !== currentTarget);
-                    onMouseUp();
-                }
-            }
+            const speed = 12;
+            if(moveF) player.translateZ(speed * delta);
+            if(moveB) player.translateZ(-speed * delta);
+            if(moveL) player.translateX(speed * delta);
+            if(moveR) player.translateX(-speed * delta);
 
-            // HƏRƏKƏT
-            const speed = 25 * delta;
-            const dir = new THREE.Vector3();
-            camera.getWorldDirection(dir);
-            dir.y = 0; dir.normalize();
+            velY -= 35 * delta;
+            player.position.y += velY * delta;
+            if(player.position.y < 0) { player.position.y = 0; velY = 0; canJ = true; }
 
-            if(moveF) camera.position.addScaledVector(dir, speed);
-            if(moveB) camera.position.addScaledVector(dir, -speed);
-
-            // JUMP & GRAVITY
-            velY -= 40 * delta;
-            camera.position.y += velY * delta;
-            if (camera.position.y < 5) { camera.position.y = 5; velY = 0; canJ = true; }
-
-            renderer.render(scene, camera);
-        }
-
-        window.onkeydown = (e) => { if(e.code === 'KeyW') moveF = true; if(e.code === 'KeyS') moveB = true; if(e.code === 'Space' && canJ){velY=18; canJ=false;} };
-        window.onkeyup = (e) => { if(e.code === 'KeyW') moveF = false; if(e.code === 'KeyS') moveB = false; };
-    </script>
-</body>
-</html>
-"""
-
-components.html(mc_final_code, height=800)
+            // Kamera TPS (Oyunçunun arxasından)
+            const camOffset = new THREE.Vector3(0, 5, -10
